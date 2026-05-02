@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lockpicking Challenge - Fixed</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --gold-color: #c9a730;
+            --text-color: #f0f0f0;
+            --danger-color: #ff4444;
+            --ui-bg: rgba(0, 0, 0, 0.9);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #status-bar {
+            position: absolute;
+            top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 1.2em;
+            color: var(--gold-color);
+            z-index: 20;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+        }
+
+        #picks-container { display: flex; gap: 8px; }
+
+        .pick-icon {
+            width: 8px;
+            height: 25px;
+            background: linear-gradient(to bottom, #aaa, #444);
+            border-radius: 2px;
+            border: 1px solid #000;
+            transition: all 0.3s ease;
+        }
+
+        .pick-icon.broken {
+            opacity: 0.1;
+            transform: rotate(45deg) translateY(10px);
+        }
+
+        #game-container {
+            position: relative;
+            width: 85vw;
+            max-width: 380px;
+            height: 85vw;
+            max-height: 380px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        #lock-casing {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #666, #111);
+            border: 8px solid #222;
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+
+        #lock-cylinder {
+            width: 40%;
+            height: 40%;
+            background: radial-gradient(circle, #999, #333);
+            border: 4px solid #111;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(0deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #keyhole {
+            width: 12%;
+            height: 45%;
+            background-color: #000;
+            border-radius: 3px;
+        }
+
+        #pick {
+            position: absolute;
+            width: 4px;
+            height: 55%;
+            background: linear-gradient(to top, #555, #ddd);
+            bottom: 50%;
+            left: calc(50% - 2px);
+            transform-origin: bottom center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #mobile-rotate-btn {
+            display: none;
+            padding: 18px 50px;
+            font-size: 1.4em;
+            font-weight: bold;
+            background-color: var(--gold-color);
+            color: #000;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            touch-action: manipulation;
+        }
+
+        @media (pointer: coarse) { #mobile-rotate-btn { display: block; } }
+
+        .overlay {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--ui-bg);
+            padding: 30px;
+            border: 3px solid var(--gold-color);
+            border-radius: 15px;
+            text-align: center;
+            z-index: 100;
+            width: 85%;
+            box-shadow: 0 0 60px rgba(0,0,0,1);
+        }
+
+        .overlay h2 { color: var(--gold-color); margin-top: 0; text-transform: uppercase; }
+        #fail-screen { border-color: var(--danger-color); }
+        #fail-screen h2 { color: var(--danger-color); }
+
+        .coords {
+            font-size: 1.5em;
+            color: var(--gold-color);
+            font-weight: bold;
+            margin: 20px 0;
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        button.restart {
+            padding: 12px 25px;
+            cursor: pointer;
+            background: var(--gold-color);
+            color: black;
+            border: none;
+            font-weight: bold;
+            border-radius: 5px;
+            text-transform: uppercase;
+        }
+
+        .shake { animation: shake 0.1s infinite; }
+        @keyframes shake {
+            0% { margin-left: 0; }
+            25% { margin-left: 2px; }
+            75% { margin-left: -2px; }
+            100% { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status-bar">
+        <span>DIETRICHE</span>
+        <div id="picks-container">
+            <div class="pick-icon"></div>
+            <div class="pick-icon"></div>
+            <div class="pick-icon) "></div>
+            <div class="pick-icon"></div>
+            <div class="pick-icon"></div>
+        </div>
+    </div>
+
+    <div style="text-align:center; margin-bottom: 10px;">
+        <p id="hint-text" style="font-size:0.9em; opacity:0.7;">Finde den Sweetspot und drehe vorsichtig.</p>
+    </div>
+
+    <div id="game-container">
+        <div id="lock-casing">
+            <div id="lock-cylinder">
+                <div id="keyhole"></div>
+            </div>
+        </div>
+        <div id="pick"></div>
+
+        <div id="success-screen" class="overlay">
+            <h2>Geknackt!</h2>
+            <p>Die Koordinaten lauten:</p>
+            <div class="coords">N 52° 32.906′<br>E 13° 02.140′</div>
+            <button class="restart" onclick="location.reload()">Beenden</button>
+        </div>
+
+        <div id="fail-screen" class="overlay">
+            <h2>Dietriche leer</h2>
+            <p>Du hast es nicht geschafft.</p>
+            <button class="restart" onclick="location.reload()">Erneut versuchen</button>
+        </div>
+    </div>
+
+    <button id="mobile-rotate-btn">DREHEN</button>
+
+    <script>
+        const pick = document.getElementById('pick');
+        const cylinder = document.getElementById('lock-cylinder');
+        const casing = document.getElementById('lock-casing');
+        const rotateBtn = document.getElementById('mobile-rotate-btn');
+        const pickIcons = document.querySelectorAll('.pick-icon');
+
+        let attempts = 5;
+        let pickDurability = 100; 
+        let solved = false;
+        let gameOver = false;
+        let isTrying = false;
+        let cylinderRotation = 0;
+        let pickAngle = 0;
+        
+        const sweetSpot = Math.floor(Math.random() * 140) - 70; 
+
+        let audioCtx;
+        const initAudio = () => { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); };
+        
+        const playSound = (freq, duration, type, vol) => {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        };
+
+        const soundScrape = () => playSound(140 + Math.random()*20, 0.04, 'triangle', 0.02);
+        const soundCreak = () => playSound(50 + cylinderRotation/2, 0.08, 'sawtooth', 0.015);
+        const soundBlock = () => playSound(350, 0.05, 'square', 0.04);
+        const soundBreak = () => playSound(120, 0.25, 'square', 0.15);
+        const soundWin = () => { playSound(523, 0.1, 'sine', 0.1); setTimeout(()=>playSound(659, 0.3, 'sine', 0.1), 100); };
+
+        function updatePickPos(x, y) {
+            if (solved || gameOver || isTrying) return;
+            initAudio();
+            const box = casing.getBoundingClientRect();
+            const angle = Math.atan2(y - (box.top + box.height/2), x - (box.left + box.width/2)) * (180/Math.PI) + 90;
+            let newAngle = Math.max(-90, Math.min(90, angle));
+            if (Math.abs(newAngle - pickAngle) > 2.5) soundScrape();
+            pickAngle = newAngle;
+            pick.style.transform = `rotate(${pickAngle}deg)`;
+        }
+
+        document.addEventListener('mousemove', (e) => updatePickPos(e.clientX, e.clientY));
+        casing.addEventListener('touchmove', (e) => { 
+            e.preventDefault(); 
+            updatePickPos(e.touches[0].clientX, e.touches[0].clientY); 
+        }, {passive:false});
+        
+        const startAction = () => { if(!solved && !gameOver) { initAudio(); isTrying = true; } };
+        const stopAction = () => { 
+            isTrying = false; 
+            if(!solved) {
+                cylinderRotation = 0;
+                cylinder.style.transform = `translate(-50%, -50%) rotate(0deg)`;
+                cylinder.classList.remove('shake');
+            }
+        };
+
+        document.addEventListener('keydown', (e) => { if(e.code === 'Space') startAction(); });
+        document.addEventListener('keyup', (e) => { if(e.code === 'Space') stopAction(); });
+        rotateBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startAction(); });
+        rotateBtn.addEventListener('touchend', stopAction);
+
+        function loop() {
+            if (solved || gameOver) return;
+
+            if (isTrying) {
+                const diff = Math.abs(pickAngle - sweetSpot);
+                let maxRot;
+
+                // 5 Grad Toleranz für den Sieg
+                if (diff <= 5) {
+                    maxRot = 90;
+                } else {
+                    maxRot = Math.max(5, 90 - (diff * 4)); 
+                }
+
+                // Prüfen, ob wir das Ziel erreicht haben
+                if (cylinderRotation >= 90) {
+                    win();
+                } else if (cylinderRotation < maxRot) {
+                    // Weiter drehen
+                    cylinderRotation += 2.0;
+                    soundCreak();
+                    // Verhindern, dass wir über 90 hinaus rotieren im Interface
+                    let displayRot = Math.min(cylinderRotation, 90);
+                    cylinder.style.transform = `translate(-50%, -50%) rotate(${displayRot}deg)`;
+                    
+                    // Falls wir durch diesen Schritt 90 erreicht haben -> Sieg
+                    if (cylinderRotation >= 90) win();
+
+                } else {
+                    // Blockiert
+                    cylinder.classList.add('shake');
+                    soundBlock();
+                    pickDurability -= 1.0; 
+                    if (navigator.vibrate) navigator.vibrate(15);
+                    if (pickDurability <= 0) breakPick();
+                }
+            }
+            requestAnimationFrame(loop);
+        }
+
+        function breakPick() {
+            stopAction();
+            soundBreak();
+            if (navigator.vibrate) navigator.vibrate(250);
+            attempts--;
+            if(pickIcons[attempts]) pickIcons[attempts].classList.add('broken');
+            pickDurability = 100;
+            if (attempts <= 0) {
+                gameOver = true;
+                document.getElementById('fail-screen').style.display = 'block';
+                rotateBtn.style.display = 'none';
+            }
+        }
+
+        function win() {
+            if(solved) return;
+            solved = true;
+            cylinderRotation = 90;
+            cylinder.style.transform = `translate(-50%, -50%) rotate(90deg)`;
+            cylinder.classList.remove('shake');
+            soundWin();
+            if (navigator.vibrate) navigator.vibrate([100, 50, 150]);
+            document.getElementById('success-screen').style.display = 'block';
+            rotateBtn.style.display = 'none';
+        }
+
+        loop();
+    </script>
+</body>
+</html>
